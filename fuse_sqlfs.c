@@ -19,12 +19,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "sqlfs.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 int main(int argc, char **argv)
 {
-    int rc;
-    const char* db = "/tmp/fsdata";
+	if (argc < 3) {
+		fprintf(stderr, "usage: fuse_sqlfs db.sqlite3 /mount/point/\n");
+		exit(1);
+	}
+
+    const char* db = argv[1];
+
+	// hack: hide that argument from the rest of the program
+	argv[1] = argv[0];
+	argv++;
+	argc--;
+
 #ifdef HAVE_LIBSQLCIPHER
     sqlfs_t *sqlfs = 0;
 
@@ -45,12 +56,15 @@ int main(int argc, char **argv)
         sqlfs_init_password(db, password);
         memset(password, 0, BUF_SIZE); // zero out password
     }
-    else // this is for the sqlfs_init() line below
-#endif /* HAVE_LIBSQLCIPHER */
-/* if you want to mount a file with a password */
+    else
+	{
         sqlfs_init(db);
+	}
+#else
+	sqlfs_init(db); // just init it
+#endif /* HAVE_LIBSQLCIPHER */
 
-    rc = sqlfs_fuse_main(argc, argv);
+    int rc = sqlfs_fuse_main(argc, argv);
     sqlfs_destroy();
     return rc;
 }
